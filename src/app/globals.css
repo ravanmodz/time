@@ -216,3 +216,47 @@ body {
 .animate-slideIn * {
     transition: none;
 }
+
+/* Sweet Alert Animations */
+@keyframes bounceOnce {
+    0% { transform: scale(0); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(50px) scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes checkmark {
+    0% { stroke-dashoffset: 100; }
+    100% { stroke-dashoffset: 0; }
+}
+
+.animate-bounce-once {
+    animation: bounceOnce 0.5s ease-out;
+}
+
+.animate-slideUp {
+    animation: slideUp 0.3s ease-out;
+}
+
+/* Mobile Responsive Utilities */
+@media (max-width: 640px) {
+    .mobile-full {
+        width: 100% !important;
+        min-width: 100% !important;
+    }
+    
+    .mobile-padding {
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+    }
+}

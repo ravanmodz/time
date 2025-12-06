@@ -3,6 +3,7 @@
 import { SessionProvider } from 'next-auth/react';
 import { ThemeProvider } from 'next-themes';
 import { ReactNode } from 'react';
+import { ToastProvider } from '@/components/Toast';
 
 export function Providers({ children }: { children: ReactNode }) {
     return (
@@ -13,7 +14,9 @@ export function Providers({ children }: { children: ReactNode }) {
                 enableSystem={true}
                 disableTransitionOnChange={false}
             >
-                {children}
+                <ToastProvider>
+                    {children}
+                </ToastProvider>
             </ThemeProvider>
         </SessionProvider>
     );
