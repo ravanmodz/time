@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Users, Plus, Edit, Trash2, Search, Store, Phone, Mail } from 'lucide-react';
 import Modal from '@/components/Modal';
+import { useToast } from '@/components/Toast';
 
 interface UserData {
     _id: string;
@@ -22,6 +23,7 @@ interface Shop {
 }
 
 export default function UsersPage() {
+    const toast = useToast();
     const [users, setUsers] = useState<UserData[]>([]);
     const [shops, setShops] = useState<Shop[]>([]);
     const [loading, setLoading] = useState(true);
@@ -52,7 +54,12 @@ export default function UsersPage() {
         const method = editingUser ? 'PUT' : 'POST';
         const body = editingUser ? { id: editingUser._id, ...formData } : formData;
 
-        await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        if (res.ok) {
+            toast.success(editingUser ? 'Tenant Updated!' : 'Tenant Added!', editingUser ? 'Changes saved successfully' : 'New tenant has been added');
+        } else {
+            toast.error('Failed!', 'Could not save tenant');
+        }
         closeModal();
         fetchData();
     };
@@ -68,7 +75,12 @@ export default function UsersPage() {
 
     const handleDelete = async (id: string) => {
         if (!confirm('Delete this tenant?')) return;
-        await fetch(`/api/users?id=${id}`, { method: 'DELETE' });
+        const res = await fetch(`/api/users?id=${id}`, { method: 'DELETE' });
+        if (res.ok) {
+            toast.success('Tenant Deleted!', 'Tenant has been removed');
+        } else {
+            toast.error('Failed!', 'Could not delete tenant');
+        }
         fetchData();
     };
 

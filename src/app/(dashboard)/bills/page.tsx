@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Receipt, Plus, IndianRupee, Filter, X, Download, Eye } from 'lucide-react';
 import Modal from '@/components/Modal';
 import { useSession } from 'next-auth/react';
+import { useToast } from '@/components/Toast';
 
 interface Bill {
     _id: string;
@@ -31,6 +32,7 @@ const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 
 
 export default function BillsPage() {
     const { data: session } = useSession();
+    const toast = useToast();
     const userRole = (session?.user as any)?.role;
     const isUser = userRole === 'user';
     const [bills, setBills] = useState<Bill[]>([]);
@@ -75,11 +77,16 @@ export default function BillsPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        await fetch('/api/bills', {
+        const res = await fetch('/api/bills', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(formData)
         });
+        if (res.ok) {
+            toast.success('Bill Created!', 'New bill has been created successfully');
+        } else {
+            toast.error('Failed!', 'Could not create bill');
+        }
         setShowModal(false);
         setFormData({ shopId: '', billMonth: months[new Date().getMonth()], billYear: new Date().getFullYear(), dueDate: '', rentAmount: 0, maintenanceCharge: 0, electricityCharge: 0, waterCharge: 0, otherCharges: 0, discount: 0 });
         fetchData();
@@ -87,11 +94,16 @@ export default function BillsPage() {
 
     const handlePayment = async (e: React.FormEvent) => {
         e.preventDefault();
-        await fetch('/api/payments', {
+        const res = await fetch('/api/payments', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(paymentData)
         });
+        if (res.ok) {
+            toast.success('Payment Recorded!', `₹${paymentData.amount} payment successful`);
+        } else {
+            toast.error('Failed!', 'Could not record payment');
+        }
         setShowPaymentModal(false);
         setSelectedBill(null);
         fetchData();

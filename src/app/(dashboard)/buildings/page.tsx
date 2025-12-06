@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Building2, Plus, Edit, Trash2, Layers, Store, MapPin, Eye } from 'lucide-react';
 import Modal from '@/components/Modal';
 import RoleGuard from '@/components/RoleGuard';
+import { useToast } from '@/components/Toast';
 
 interface Building {
     _id: string;
@@ -15,6 +16,7 @@ interface Building {
 }
 
 export default function BuildingsPage() {
+    const toast = useToast();
     const [buildings, setBuildings] = useState<Building[]>([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
@@ -37,11 +39,17 @@ export default function BuildingsPage() {
         const url = editingBuilding ? `/api/buildings/${editingBuilding._id}` : '/api/buildings';
         const method = editingBuilding ? 'PUT' : 'POST';
 
-        await fetch(url, {
+        const res = await fetch(url, {
             method,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(formData)
         });
+
+        if (res.ok) {
+            toast.success(editingBuilding ? 'Building Updated!' : 'Building Added!', editingBuilding ? 'Changes saved successfully' : 'New building has been added');
+        } else {
+            toast.error('Failed!', 'Could not save building');
+        }
 
         setShowModal(false);
         setEditingBuilding(null);
@@ -62,7 +70,12 @@ export default function BuildingsPage() {
 
     const handleDelete = async (id: string) => {
         if (!confirm('Are you sure you want to delete this building?')) return;
-        await fetch(`/api/buildings/${id}`, { method: 'DELETE' });
+        const res = await fetch(`/api/buildings/${id}`, { method: 'DELETE' });
+        if (res.ok) {
+            toast.success('Building Deleted!', 'Building has been removed');
+        } else {
+            toast.error('Failed!', 'Could not delete building');
+        }
         fetchBuildings();
     };
 

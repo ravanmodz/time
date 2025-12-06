@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { Sun, Moon, Monitor, Save, Palette, Building2, Upload, X, FileText, CreditCard, QrCode } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import RoleGuard from '@/components/RoleGuard';
+import { useToast } from '@/components/Toast';
 
 const themeOptions = [
     { id: 'system', label: 'System (Auto)', icon: Monitor },
@@ -24,6 +25,7 @@ const pdfTemplates = [
 export default function SettingsPage() {
     const { data: session } = useSession();
     const { theme, setTheme, resolvedTheme } = useTheme();
+    const toast = useToast();
     const [mounted, setMounted] = useState(false);
     const [activeTab, setActiveTab] = useState('branding');
 
@@ -155,8 +157,10 @@ export default function SettingsPage() {
             if (res.ok && data.success) {
                 setSaved(true);
                 setTimeout(() => setSaved(false), 2000);
+                toast.success('Settings Saved!', 'Your changes have been saved successfully');
                 window.dispatchEvent(new CustomEvent('appSettingsChanged'));
             } else {
+                toast.error('Failed!', 'Could not save settings');
                 setError('Failed to save. Please try again.');
             }
         } catch (err) {
@@ -356,25 +360,27 @@ export default function SettingsPage() {
                             {/* GST Settings */}
                             <div className="bg-[var(--bg-tertiary)] rounded-xl p-4">
                                 <h3 className="font-medium text-[var(--text-primary)] mb-4">GST Rate</h3>
-                                <div className="flex items-center gap-4">
-                                    <input
-                                        type="number"
-                                        value={gstRate}
-                                        onChange={(e) => setGstRate(Number(e.target.value))}
-                                        className="w-32 px-4 py-3 bg-[var(--bg-card)] border border-[var(--border-primary)] rounded-xl focus:border-indigo-500 focus:outline-none text-[var(--text-primary)] text-center text-xl font-bold"
-                                        min="0" max="50" step="0.5"
-                                    />
-                                    <span className="text-2xl font-bold text-[var(--text-secondary)]">%</span>
-                                    <div className="flex gap-2 ml-4">
+                                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="number"
+                                            value={gstRate}
+                                            onChange={(e) => setGstRate(Number(e.target.value))}
+                                            className="w-24 px-3 py-3 bg-[var(--bg-card)] border border-[var(--border-primary)] rounded-xl focus:border-indigo-500 focus:outline-none text-[var(--text-primary)] text-center text-xl font-bold"
+                                            min="0" max="50" step="0.5"
+                                        />
+                                        <span className="text-xl font-bold text-[var(--text-secondary)]">%</span>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
                                         {[5, 12, 18, 28].map(rate => (
                                             <button key={rate} onClick={() => setGstRate(rate)}
-                                                className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${gstRate === rate ? 'bg-indigo-500 text-white' : 'bg-[var(--bg-card)] text-[var(--text-tertiary)]'}`}>
+                                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${gstRate === rate ? 'bg-indigo-500 text-white' : 'bg-[var(--bg-card)] text-[var(--text-tertiary)]'}`}>
                                                 {rate}%
                                             </button>
                                         ))}
                                     </div>
                                 </div>
-                                <p className="text-xs text-[var(--text-muted)] mt-2">Bill mein CGST {gstRate / 2}% + SGST {gstRate / 2}% = {gstRate}% laga jayega</p>
+                                <p className="text-xs text-[var(--text-muted)] mt-3">Bill mein CGST {gstRate / 2}% + SGST {gstRate / 2}% = {gstRate}% laga jayega</p>
                             </div>
 
                             {/* Commission Settings */}
