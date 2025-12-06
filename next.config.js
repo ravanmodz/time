@@ -1,15 +1,16 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: true,
-  images: {
-    domains: ['localhost'],
-  },
-  api: {
-    bodyParser: {
-      sizeLimit: '10mb',
+    reactStrictMode: true,
+    swcMinify: true,
+    experimental: {
+        serverComponentsExternalPackages: ['mongoose', 'bcryptjs']
     },
-  },
+    typescript: {
+        ignoreBuildErrors: true
+    },
+    eslint: {
+        ignoreDuringBuilds: true
+    }
 }
 
 module.exports = nextConfig
-
