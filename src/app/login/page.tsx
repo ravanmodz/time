@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { User, Lock, Eye, EyeOff, LogIn, AlertCircle } from 'lucide-react';
+import { User, Lock, Eye, EyeOff, LogIn, CheckCircle, XCircle } from 'lucide-react';
 
 export default function LoginPage() {
     const router = useRouter();
@@ -12,6 +12,11 @@ export default function LoginPage() {
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+
+    // Sweet Alert State
+    const [showAlert, setShowAlert] = useState(false);
+    const [alertType, setAlertType] = useState<'success' | 'error'>('success');
+    const [alertMessage, setAlertMessage] = useState('');
 
     // App settings
     const [appName, setAppName] = useState('');
@@ -53,118 +58,165 @@ export default function LoginPage() {
             });
 
             if (result?.error) {
-                setError('Invalid username or password');
+                // Show Error Alert
+                setAlertType('error');
+                setAlertMessage('Invalid username or password!');
+                setShowAlert(true);
                 setLoading(false);
             } else if (result?.ok) {
-                router.push('/dashboard');
-                router.refresh();
+                // Show Success Alert
+                setAlertType('success');
+                setAlertMessage('Login Successful! Redirecting...');
+                setShowAlert(true);
+
+                // Redirect after 1.5 seconds
+                setTimeout(() => {
+                    router.push('/dashboard');
+                    router.refresh();
+                }, 1500);
             }
         } catch (err) {
-            setError('An error occurred');
+            setAlertType('error');
+            setAlertMessage('An error occurred. Please try again.');
+            setShowAlert(true);
             setLoading(false);
         }
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-slate-900">
-            <div className="absolute inset-0 overflow-hidden">
-                <div className="absolute w-[500px] h-[500px] bg-indigo-500 rounded-full filter blur-[80px] opacity-30 -top-[200px] -right-[100px]" />
-                <div className="absolute w-[400px] h-[400px] bg-green-500 rounded-full filter blur-[80px] opacity-30 -bottom-[150px] -left-[100px]" />
-            </div>
-
-            <div className="relative z-10 w-full max-w-md mx-4">
-                <div className="bg-slate-800/80 backdrop-blur-xl border border-slate-700 rounded-2xl p-8">
-                    <div className="text-center mb-8">
-                        {settingsLoaded ? (
-                            <>
-                                {logoType === 'image' && appLogo && appLogo.startsWith('data:') ? (
-                                    <img
-                                        src={appLogo}
-                                        alt="Logo"
-                                        className="w-16 h-16 rounded-full object-cover mx-auto mb-4 shadow-lg shadow-indigo-500/30"
-                                    />
+        <>
+            {/* Sweet Alert Modal */}
+            {showAlert && (
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fadeIn">
+                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-8 min-w-[320px] max-w-[400px] mx-4 animate-slideUp">
+                        <div className="flex flex-col items-center text-center">
+                            {/* Icon */}
+                            <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-5 animate-bounce-once ${alertType === 'success' ? 'bg-green-100' : 'bg-red-100'
+                                }`}>
+                                {alertType === 'success' ? (
+                                    <CheckCircle className="w-10 h-10 text-green-500" />
                                 ) : (
-                                    <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg shadow-indigo-500/30 text-3xl">
-                                        {appLogo || '🏢'}
-                                    </div>
+                                    <XCircle className="w-10 h-10 text-red-500" />
                                 )}
-                                <h1 className="text-2xl font-bold text-white mb-1">{appName || 'BillManager'}</h1>
-                            </>
-                        ) : (
-                            <>
-                                <div className="w-16 h-16 bg-slate-700 rounded-full mx-auto mb-4 animate-pulse" />
-                                <div className="h-7 w-40 bg-slate-700 rounded mx-auto mb-1 animate-pulse" />
-                            </>
-                        )}
-                        <p className="text-slate-400">Sign in to your account</p>
-                    </div>
-
-                    {error && (
-                        <div className="flex items-center gap-3 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 mb-6">
-                            <AlertCircle className="w-5 h-5 flex-shrink-0" />
-                            <span>{error}</span>
-                        </div>
-                    )}
-
-                    <form onSubmit={handleSubmit} className="space-y-5">
-                        <div>
-                            <label className="flex items-center gap-2 text-sm text-slate-400 mb-2">
-                                <User className="w-4 h-4" /> Username
-                            </label>
-                            <input
-                                type="text"
-                                value={username}
-                                onChange={(e) => setUsername(e.target.value)}
-                                className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
-                                placeholder="Enter username"
-                                required
-                            />
-                        </div>
-
-                        <div>
-                            <label className="flex items-center gap-2 text-sm text-slate-400 mb-2">
-                                <Lock className="w-4 h-4" /> Password
-                            </label>
-                            <div className="relative">
-                                <input
-                                    type={showPassword ? 'text' : 'password'}
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    className="w-full px-4 py-3 pr-12 bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
-                                    placeholder="Enter password"
-                                    required
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
-                                >
-                                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                                </button>
                             </div>
-                        </div>
 
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="w-full py-3 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2 hover:from-indigo-600 hover:to-indigo-700 disabled:opacity-50 transition"
-                        >
-                            {loading ? (
-                                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            {/* Title */}
+                            <h3 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">
+                                {alertType === 'success' ? 'Success!' : 'Oops!'}
+                            </h3>
+
+                            {/* Message */}
+                            <p className="text-slate-500 dark:text-slate-400 mb-6">
+                                {alertMessage}
+                            </p>
+
+                            {/* OK Button */}
+                            {alertType === 'error' && (
+                                <button
+                                    onClick={() => setShowAlert(false)}
+                                    className="px-10 py-3 bg-red-500 text-white rounded-xl font-semibold hover:bg-red-600 transition-all transform hover:scale-105"
+                                >
+                                    Try Again
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-slate-900">
+                <div className="absolute inset-0 overflow-hidden">
+                    <div className="absolute w-[500px] h-[500px] bg-indigo-500 rounded-full filter blur-[80px] opacity-30 -top-[200px] -right-[100px]" />
+                    <div className="absolute w-[400px] h-[400px] bg-green-500 rounded-full filter blur-[80px] opacity-30 -bottom-[150px] -left-[100px]" />
+                </div>
+
+                <div className="relative z-10 w-full max-w-md mx-4 px-4 sm:px-0">
+                    <div className="bg-slate-800/80 backdrop-blur-xl border border-slate-700 rounded-2xl p-6 sm:p-8">
+                        <div className="text-center mb-8">
+                            {settingsLoaded ? (
+                                <>
+                                    {logoType === 'image' && appLogo && appLogo.startsWith('data:') ? (
+                                        <img
+                                            src={appLogo}
+                                            alt="Logo"
+                                            className="w-16 h-16 rounded-full object-cover mx-auto mb-4 shadow-lg shadow-indigo-500/30"
+                                        />
+                                    ) : (
+                                        <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg shadow-indigo-500/30 text-3xl">
+                                            {appLogo || '🏢'}
+                                        </div>
+                                    )}
+                                    <h1 className="text-2xl font-bold text-white mb-1">{appName || 'BillManager'}</h1>
+                                </>
                             ) : (
                                 <>
-                                    <LogIn className="w-5 h-5" />
-                                    Sign In
+                                    <div className="w-16 h-16 bg-slate-700 rounded-full mx-auto mb-4 animate-pulse" />
+                                    <div className="h-7 w-40 bg-slate-700 rounded mx-auto mb-1 animate-pulse" />
                                 </>
                             )}
-                        </button>
-                    </form>
+                            <p className="text-slate-400">Sign in to your account</p>
+                        </div>
 
-                    <div className="mt-6 pt-6 border-t border-slate-700 text-center text-sm text-slate-500">
-                        Default: admin / admin123
+                        <form onSubmit={handleSubmit} className="space-y-5">
+                            <div>
+                                <label className="flex items-center gap-2 text-sm text-slate-400 mb-2">
+                                    <User className="w-4 h-4" /> Username
+                                </label>
+                                <input
+                                    type="text"
+                                    value={username}
+                                    onChange={(e) => setUsername(e.target.value)}
+                                    className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-base"
+                                    placeholder="Enter username"
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <label className="flex items-center gap-2 text-sm text-slate-400 mb-2">
+                                    <Lock className="w-4 h-4" /> Password
+                                </label>
+                                <div className="relative">
+                                    <input
+                                        type={showPassword ? 'text' : 'password'}
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        className="w-full px-4 py-3 pr-12 bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-base"
+                                        placeholder="Enter password"
+                                        required
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 p-1"
+                                    >
+                                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                className="w-full py-3 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2 hover:from-indigo-600 hover:to-indigo-700 disabled:opacity-50 transition text-base"
+                            >
+                                {loading ? (
+                                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                ) : (
+                                    <>
+                                        <LogIn className="w-5 h-5" />
+                                        Sign In
+                                    </>
+                                )}
+                            </button>
+                        </form>
+
+                        <div className="mt-6 pt-6 border-t border-slate-700 text-center text-sm text-slate-500">
+                            Default: admin / admin123
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
+        </>
     );
 }
