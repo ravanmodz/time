@@ -78,3 +78,53 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }
+
+// PUT update bill
+export async function PUT(request: NextRequest) {
+    try {
+        await dbConnect();
+        const data = await request.json();
+        const { id, ...updateData } = data;
+
+        // Recalculate total if charges are updated
+        if (updateData.rentAmount !== undefined || updateData.maintenanceCharge !== undefined ||
+            updateData.electricityCharge !== undefined || updateData.waterCharge !== undefined ||
+            updateData.otherCharges !== undefined || updateData.discount !== undefined) {
+
+            const bill = await Bill.findById(id);
+            if (bill) {
+                const totalAmount = (
+                    (updateData.rentAmount ?? bill.rentAmount) +
+                    (updateData.maintenanceCharge ?? bill.maintenanceCharge) +
+                    (updateData.electricityCharge ?? bill.electricityCharge) +
+                    (updateData.waterCharge ?? bill.waterCharge) +
+                    (updateData.otherCharges ?? bill.otherCharges) +
+                    (updateData.lateFee ?? bill.lateFee) +
+                    (updateData.previousBalance ?? bill.previousBalance) -
+                    (updateData.discount ?? bill.discount)
+                );
+                updateData.totalAmount = totalAmount;
+                updateData.balanceAmount = totalAmount - bill.paidAmount;
+            }
+        }
+
+        const updatedBill = await Bill.findByIdAndUpdate(id, updateData, { new: true });
+        return NextResponse.json(updatedBill);
+    } catch (error: any) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+}
+
+// DELETE bill (soft delete - cancel)
+export async function DELETE(request: NextRequest) {
+    try {
+        await dbConnect();
+        const { searchParams } = new URL(request.url);
+        const id = searchParams.get('id');
+
+        await Bill.findByIdAndUpdate(id, { status: 'cancelled' });
+        return NextResponse.json({ message: 'Bill deleted successfully' });
+    } catch (error) {
+        return NextResponse.json({ error: 'Failed to delete bill' }, { status: 500 });
+    }
+}

@@ -41,8 +41,8 @@ export const authOptions: NextAuthOptions = {
                     if (ownerCount === 0) {
                         const hashedPass = await bcrypt.hash('admin123', 12);
                         await Owner.create({
-                            username: 'admin',
-                            email: 'admin@example.com',
+                            username: 'owner',
+                            email: 'owner@example.com',
                             password: hashedPass,
                             fullName: 'Owner',
                             isActive: true

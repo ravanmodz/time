@@ -5,6 +5,7 @@ import { Shield, Plus, Edit, Trash2 } from 'lucide-react';
 import Modal from '@/components/Modal';
 import { useSession } from 'next-auth/react';
 import RoleGuard from '@/components/RoleGuard';
+import { useToast } from '@/components/Toast';
 
 interface Admin {
     _id: string;
@@ -23,6 +24,7 @@ export default function AdminsPage() {
     const [showModal, setShowModal] = useState(false);
     const [editingAdmin, setEditingAdmin] = useState<Admin | null>(null);
     const [formData, setFormData] = useState({ fullName: '', username: '', email: '', phone: '', password: '', role: 'admin' });
+    const toast = useToast();
 
     useEffect(() => { fetchAdmins(); }, []);
 
@@ -59,15 +61,19 @@ export default function AdminsPage() {
             const data = await res.json();
 
             if (!res.ok) {
-                alert(data.error || 'Failed to save admin');
+                toast.error('Failed!', data.error || 'Could not save admin');
                 return;
             }
 
             closeModal();
             fetchAdmins();
+            toast.success(
+                editingAdmin ? 'Admin Updated!' : 'Admin Created!',
+                `${formData.fullName} has been ${editingAdmin ? 'updated' : 'created'} successfully`
+            );
         } catch (error) {
             console.error('Error saving admin:', error);
-            alert('Failed to save admin. Please try again.');
+            toast.error('Error!', 'Something went wrong. Please try again.');
         }
     };
 
@@ -77,10 +83,19 @@ export default function AdminsPage() {
         setShowModal(true);
     };
 
-    const handleDelete = async (id: string) => {
+    const handleDelete = async (id: string, adminName: string) => {
         if (!confirm('Delete this admin?')) return;
-        await fetch(`/api/admins?id=${id}`, { method: 'DELETE' });
-        fetchAdmins();
+        try {
+            const res = await fetch(`/api/admins?id=${id}`, { method: 'DELETE' });
+            if (res.ok) {
+                fetchAdmins();
+                toast.success('Admin Deleted!', `${adminName} has been removed`);
+            } else {
+                toast.error('Failed!', 'Could not delete admin');
+            }
+        } catch (error) {
+            toast.error('Error!', 'Something went wrong');
+        }
     };
 
     const closeModal = () => { setShowModal(false); setEditingAdmin(null); setFormData({ fullName: '', username: '', email: '', phone: '', password: '', role: 'admin' }); };
@@ -131,7 +146,7 @@ export default function AdminsPage() {
                                                 <Edit className="w-4 h-4 text-[var(--text-tertiary)]" />
                                             </button>
                                             {admin._id !== (session?.user as any)?.id && (
-                                                <button onClick={() => handleDelete(admin._id)} className="p-2 hover:bg-red-500/20 rounded-lg">
+                                                <button onClick={() => handleDelete(admin._id, admin.fullName)} className="p-2 hover:bg-red-500/20 rounded-lg">
                                                     <Trash2 className="w-4 h-4 text-red-500" />
                                                 </button>
                                             )}
@@ -188,7 +203,7 @@ export default function AdminsPage() {
                                                 <div className="flex gap-2">
                                                     <button onClick={() => handleEdit(admin)} className="p-2 hover:bg-[var(--bg-hover)] rounded-lg"><Edit className="w-4 h-4 text-[var(--text-tertiary)]" /></button>
                                                     {admin._id !== (session?.user as any)?.id && (
-                                                        <button onClick={() => handleDelete(admin._id)} className="p-2 hover:bg-red-500/20 rounded-lg"><Trash2 className="w-4 h-4 text-red-500" /></button>
+                                                        <button onClick={() => handleDelete(admin._id, admin.fullName)} className="p-2 hover:bg-red-500/20 rounded-lg"><Trash2 className="w-4 h-4 text-red-500" /></button>
                                                     )}
                                                 </div>
                                             </td>

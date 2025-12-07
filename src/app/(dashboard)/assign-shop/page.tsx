@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Link2, Users, Store, Check, X, Search } from 'lucide-react';
+import { Link2, Users, Store, Check, Search, Layers, ChevronDown } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import RoleGuard from '@/components/RoleGuard';
+import { useToast } from '@/components/Toast';
 
 interface ShopUser {
     _id: string;
@@ -12,36 +13,52 @@ interface ShopUser {
     assignedShops: string[];
 }
 
+interface Floor {
+    _id: string;
+    name: string;
+    floorNumber: number;
+}
+
 interface Shop {
     _id: string;
     name: string;
     shopNumber: string;
+    floorId: string | { _id: string; name: string };
     buildingName?: string;
 }
 
 export default function AssignShopPage() {
     const { data: session } = useSession();
     const [users, setUsers] = useState<ShopUser[]>([]);
+    const [floors, setFloors] = useState<Floor[]>([]);
     const [shops, setShops] = useState<Shop[]>([]);
     const [selectedUser, setSelectedUser] = useState<ShopUser | null>(null);
+    const [selectedFloor, setSelectedFloor] = useState<string>('');
     const [selectedShops, setSelectedShops] = useState<string[]>([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [searchUser, setSearchUser] = useState('');
-    const [searchShop, setSearchShop] = useState('');
+    const toast = useToast();
 
     useEffect(() => {
         fetchData();
     }, []);
 
     const fetchData = async () => {
-        const [usersRes, shopsRes] = await Promise.all([
-            fetch('/api/shopusers'),
-            fetch('/api/shops')
-        ]);
-        setUsers(await usersRes.json());
-        setShops(await shopsRes.json());
-        setLoading(false);
+        try {
+            const [usersRes, shopsRes, floorsRes] = await Promise.all([
+                fetch('/api/shopusers'),
+                fetch('/api/shops'),
+                fetch('/api/floors')
+            ]);
+            setUsers(await usersRes.json());
+            setShops(await shopsRes.json());
+            setFloors(await floorsRes.json());
+        } catch (error) {
+            console.error('Failed to fetch data:', error);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleSelectUser = (user: ShopUser) => {
@@ -61,20 +78,31 @@ export default function AssignShopPage() {
         if (!selectedUser) return;
         setSaving(true);
 
-        await fetch('/api/assign-shop', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: selectedUser._id, shopIds: selectedShops })
-        });
+        try {
+            const res = await fetch('/api/assign-shop', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: selectedUser._id, shopIds: selectedShops })
+            });
 
-        // Update local state
-        setUsers(prev => prev.map(u =>
-            u._id === selectedUser._id
-                ? { ...u, assignedShops: selectedShops }
-                : u
-        ));
-        setSelectedUser({ ...selectedUser, assignedShops: selectedShops });
-        setSaving(false);
+            if (res.ok) {
+                // Update local state
+                setUsers(prev => prev.map(u =>
+                    u._id === selectedUser._id
+                        ? { ...u, assignedShops: selectedShops }
+                        : u
+                ));
+                setSelectedUser({ ...selectedUser, assignedShops: selectedShops });
+                toast.success('Assignment Saved!', `${selectedShops.length} shops assigned to ${selectedUser.fullName}`);
+            } else {
+                const data = await res.json();
+                toast.error('Failed!', data.error || 'Could not assign shops');
+            }
+        } catch (error) {
+            toast.error('Error!', 'Something went wrong. Please try again.');
+        } finally {
+            setSaving(false);
+        }
     };
 
     const filteredUsers = users.filter(u =>
@@ -82,10 +110,16 @@ export default function AssignShopPage() {
         u.username.toLowerCase().includes(searchUser.toLowerCase())
     );
 
-    const filteredShops = shops.filter(s =>
-        s.name?.toLowerCase().includes(searchShop.toLowerCase()) ||
-        s.shopNumber?.toLowerCase().includes(searchShop.toLowerCase())
-    );
+    // Filter shops by selected floor
+    const getShopsForFloor = () => {
+        if (!selectedFloor) return [];
+        return shops.filter(shop => {
+            const shopFloorId = typeof shop.floorId === 'object' ? shop.floorId._id : shop.floorId;
+            return shopFloorId === selectedFloor || shopFloorId?.toString() === selectedFloor;
+        });
+    };
+
+    const floorShops = getShopsForFloor();
 
     if (loading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" /></div>;
 
@@ -160,25 +194,43 @@ export default function AssignShopPage() {
                                     <span className="text-sm text-indigo-500">{selectedShops.length} selected</span>
                                 )}
                             </div>
+
+                            {/* Floor Selection Dropdown */}
                             <div className="relative">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
-                                <input
-                                    type="text"
-                                    placeholder="Search shops..."
-                                    value={searchShop}
-                                    onChange={(e) => setSearchShop(e.target.value)}
-                                    className="w-full pl-10 pr-4 py-2 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] rounded-xl focus:border-indigo-500 focus:outline-none text-[var(--text-primary)]"
-                                />
+                                <Layers className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
+                                <select
+                                    value={selectedFloor}
+                                    onChange={(e) => setSelectedFloor(e.target.value)}
+                                    className="w-full pl-10 pr-10 py-2.5 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] rounded-xl focus:border-indigo-500 focus:outline-none text-[var(--text-primary)] appearance-none"
+                                >
+                                    <option value="">-- Select Floor First --</option>
+                                    {floors.map(floor => (
+                                        <option key={floor._id} value={floor._id}>
+                                            {floor.name}
+                                        </option>
+                                    ))}
+                                </select>
+                                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
                             </div>
                         </div>
                         <div className="max-h-[400px] overflow-y-auto">
                             {!selectedUser ? (
                                 <div className="p-8 text-center text-[var(--text-muted)]">
-                                    <Link2 className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                                    <p>Select a user first to assign shops</p>
+                                    <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                                    <p>Pehle User select karo</p>
+                                </div>
+                            ) : !selectedFloor ? (
+                                <div className="p-8 text-center text-[var(--text-muted)]">
+                                    <Layers className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                                    <p>Pehle Floor select karo</p>
+                                </div>
+                            ) : floorShops.length === 0 ? (
+                                <div className="p-8 text-center text-[var(--text-muted)]">
+                                    <Store className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                                    <p>Is floor mein koi shop nahi hai</p>
                                 </div>
                             ) : (
-                                filteredShops.map(shop => (
+                                floorShops.map(shop => (
                                     <div
                                         key={shop._id}
                                         onClick={() => toggleShop(shop._id)}
@@ -197,9 +249,9 @@ export default function AssignShopPage() {
                                                 )}
                                             </div>
                                             <div className="flex-1">
-                                                <p className="font-medium text-[var(--text-primary)]">{shop.name || shop.shopNumber}</p>
+                                                <p className="font-medium text-[var(--text-primary)]">Shop {shop.shopNumber}</p>
                                                 <p className="text-sm text-[var(--text-muted)]">
-                                                    Shop #{shop.shopNumber} {shop.buildingName && `• ${shop.buildingName}`}
+                                                    {shop.name || `Shop #${shop.shopNumber}`}
                                                 </p>
                                             </div>
                                         </div>

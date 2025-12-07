@@ -52,6 +52,7 @@ export default function SettingsPage() {
     // UPI & PDF
     const [upiId, setUpiId] = useState('');
     const [pdfTemplate, setPdfTemplate] = useState('tax_invoice');
+    const [pdfLogo, setPdfLogo] = useState('');
 
     // GST & Commission
     const [gstRate, setGstRate] = useState(18);
@@ -68,12 +69,16 @@ export default function SettingsPage() {
 
     useEffect(() => {
         setMounted(true);
+        // Set default tab based on role - branding is owner only
+        if (userRole && userRole !== 'owner' && activeTab === 'branding') {
+            setActiveTab('company');
+        }
         if (isOwnerOrAdmin) {
             fetchSettings();
         } else {
             setLoading(false);
         }
-    }, [isOwnerOrAdmin]);
+    }, [isOwnerOrAdmin, userRole]);
 
     const fetchSettings = async () => {
         try {
@@ -100,6 +105,7 @@ export default function SettingsPage() {
                 // UPI & PDF
                 setUpiId(data.upiId || '');
                 setPdfTemplate(data.pdfTemplate || 'tax_invoice');
+                setPdfLogo(data.pdfLogo || '');
                 // GST & Commission
                 setGstRate(data.gstRate ?? 18);
                 setCommissionType(data.commissionType || 'percentage');
@@ -145,6 +151,7 @@ export default function SettingsPage() {
                     appName: appName.trim() || 'BillManager',
                     appLogo: logoToSave,
                     logoType,
+                    pdfLogo,
                     companyName, companyAddress, companyCity, companyGst, companyPhone, companyEmail,
                     bankName, bankAccount, bankIfsc, bankBranch,
                     upiId, pdfTemplate,
@@ -306,7 +313,54 @@ export default function SettingsPage() {
                             <h2 className="text-lg font-semibold text-[var(--text-primary)] flex items-center gap-2">
                                 <FileText className="w-5 h-5 text-indigo-500" /> Company Details (for PDF)
                             </h2>
-                            <p className="text-sm text-[var(--text-muted)]">Yeh details bill PDF mein dikhegi</p>
+                            <p className="text-sm text-[var(--text-muted)]">These details will appear on bill PDF invoices</p>
+
+                            {/* PDF Logo Upload */}
+                            <div className="bg-[var(--bg-tertiary)] rounded-xl p-4">
+                                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
+                                    Company Logo (for PDF Invoice)
+                                </label>
+                                <div className="flex gap-4 items-start">
+                                    <label className="cursor-pointer">
+                                        <input
+                                            type="file"
+                                            accept="image/png,image/jpeg,image/jpg"
+                                            className="hidden"
+                                            onChange={(e) => {
+                                                const file = e.target.files?.[0];
+                                                if (file) {
+                                                    if (file.size > 500000) {
+                                                        setError('Logo too large. Max 500KB allowed.');
+                                                        return;
+                                                    }
+                                                    const reader = new FileReader();
+                                                    reader.onloadend = () => {
+                                                        setPdfLogo(reader.result as string);
+                                                        setError('');
+                                                    };
+                                                    reader.readAsDataURL(file);
+                                                }
+                                            }}
+                                        />
+                                        <div className="flex items-center gap-2 px-4 py-3 bg-[var(--bg-card)] border border-dashed border-[var(--border-secondary)] rounded-xl hover:bg-[var(--bg-hover)] transition-colors">
+                                            <Upload className="w-5 h-5 text-indigo-500" />
+                                            <span className="text-[var(--text-secondary)]">Upload Logo</span>
+                                        </div>
+                                    </label>
+                                    {pdfLogo && (
+                                        <div className="relative">
+                                            <img src={pdfLogo} alt="PDF Logo" className="h-16 max-w-[200px] object-contain border-2 border-indigo-500 rounded-lg bg-white p-1" />
+                                            <button
+                                                onClick={() => setPdfLogo('')}
+                                                className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600"
+                                            >
+                                                <X className="w-3 h-3" />
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                                <p className="text-xs text-[var(--text-muted)] mt-2">PNG or JPG, max 500KB. This logo will appear on all bill PDFs.</p>
+                            </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
@@ -484,7 +538,7 @@ export default function SettingsPage() {
                             <h2 className="text-lg font-semibold text-[var(--text-primary)] flex items-center gap-2">
                                 <FileText className="w-5 h-5 text-indigo-500" /> PDF Template
                             </h2>
-                            <p className="text-sm text-[var(--text-muted)]">Bill download karne par yeh template use hogi</p>
+                            <p className="text-sm text-[var(--text-muted)]">Select your preferred invoice layout for bill PDFs</p>
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 {pdfTemplates.map(template => (
@@ -496,6 +550,101 @@ export default function SettingsPage() {
                                             : 'border-[var(--border-primary)] hover:border-[var(--border-secondary)]'
                                             }`}
                                     >
+                                        {/* Template Preview Mock-up */}
+                                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 mb-3 h-40 overflow-hidden">
+                                            {template.id === 'tax_invoice' && (
+                                                <div className="h-full flex flex-col text-[6px] text-gray-700">
+                                                    <div className="flex justify-between items-start pb-1 border-b border-gray-200">
+                                                        <div className="flex items-center gap-1">
+                                                            <div className="w-4 h-4 bg-indigo-500 rounded"></div>
+                                                            <span className="font-bold text-[7px]">COMPANY</span>
+                                                        </div>
+                                                        <span className="text-gray-400">GST: XXX</span>
+                                                    </div>
+                                                    <div className="bg-indigo-600 text-white text-center py-0.5 my-1 rounded text-[6px] font-bold">TAX INVOICE</div>
+                                                    <div className="flex justify-between text-gray-500 mb-1">
+                                                        <span>Invoice: INV-001</span>
+                                                        <span>Shop: 1001</span>
+                                                    </div>
+                                                    <div className="bg-gray-100 rounded p-1 mb-1">
+                                                        <span className="font-bold">Bill To: Customer</span>
+                                                    </div>
+                                                    <div className="flex-1 border border-gray-200 rounded">
+                                                        <div className="bg-indigo-600 text-white px-1 flex justify-between">
+                                                            <span>Description</span><span>Amount</span>
+                                                        </div>
+                                                        <div className="px-1 py-0.5">Rent Rs 1000</div>
+                                                        <div className="px-1 py-0.5 bg-gray-50">CGST Rs 90</div>
+                                                    </div>
+                                                    <div className="bg-gray-100 mt-1 p-1 rounded flex justify-between">
+                                                        <span className="font-bold">Total</span><span className="font-bold">Rs 1180</span>
+                                                    </div>
+                                                </div>
+                                            )}
+                                            {template.id === 'modern' && (
+                                                <div className="h-full flex flex-col text-[6px] text-gray-700">
+                                                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 text-white p-2 rounded-t -mx-3 -mt-3">
+                                                        <div className="font-bold text-[8px]">COMPANY NAME</div>
+                                                        <div className="text-[5px] opacity-80">Address | Phone | Email</div>
+                                                    </div>
+                                                    <div className="flex justify-between mt-2 mb-1">
+                                                        <div><span className="text-gray-400">Invoice:</span> #001</div>
+                                                        <div><span className="text-gray-400">Date:</span> 07/12/2025</div>
+                                                    </div>
+                                                    <div className="flex-1 space-y-0.5">
+                                                        <div className="flex justify-between bg-purple-100 px-1 rounded"><span>Rent</span><span>Rs 1000</span></div>
+                                                        <div className="flex justify-between px-1"><span>GST</span><span>Rs 180</span></div>
+                                                    </div>
+                                                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 text-white p-1 rounded -mx-3 -mb-3 flex justify-between">
+                                                        <span>Total Due</span><span className="font-bold">Rs 1180</span>
+                                                    </div>
+                                                </div>
+                                            )}
+                                            {template.id === 'classic' && (
+                                                <div className="h-full flex flex-col text-[6px] text-gray-700 border border-gray-300">
+                                                    <div className="border-b border-gray-300 p-1 text-center">
+                                                        <div className="font-bold text-[8px]">COMPANY NAME</div>
+                                                        <div className="text-[5px]">Address Line 1, City</div>
+                                                    </div>
+                                                    <div className="p-1 border-b border-gray-300">
+                                                        <div className="flex justify-between">
+                                                            <span>Invoice No: 001</span><span>Date: 07/12/2025</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex-1 p-1">
+                                                        <table className="w-full text-[5px]">
+                                                            <thead><tr className="border-b border-gray-300"><th className="text-left">Item</th><th className="text-right">Amount</th></tr></thead>
+                                                            <tbody>
+                                                                <tr><td>Rent</td><td className="text-right">1000</td></tr>
+                                                                <tr><td>GST</td><td className="text-right">180</td></tr>
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                    <div className="border-t border-gray-300 p-1 flex justify-between font-bold">
+                                                        <span>TOTAL</span><span>Rs 1180</span>
+                                                    </div>
+                                                </div>
+                                            )}
+                                            {template.id === 'minimal' && (
+                                                <div className="h-full flex flex-col text-[6px] text-gray-600">
+                                                    <div className="font-bold text-[9px] text-gray-800 mb-2">INVOICE</div>
+                                                    <div className="text-gray-400 mb-2">
+                                                        <div>From: Company Name</div>
+                                                        <div>To: Customer Name</div>
+                                                    </div>
+                                                    <div className="flex-1 space-y-1">
+                                                        <div className="flex justify-between border-b border-gray-100 pb-0.5"><span>Rent</span><span>1000</span></div>
+                                                        <div className="flex justify-between border-b border-gray-100 pb-0.5"><span>Tax</span><span>180</span></div>
+                                                    </div>
+                                                    <div className="border-t border-gray-300 pt-1 mt-1">
+                                                        <div className="flex justify-between font-bold text-gray-800">
+                                                            <span>Total</span><span>Rs 1180</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+
                                         <div className="flex items-center justify-between">
                                             <span className="font-semibold text-[var(--text-primary)]">{template.name}</span>
                                             {pdfTemplate === template.id && (

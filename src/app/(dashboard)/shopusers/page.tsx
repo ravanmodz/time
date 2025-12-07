@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Users, Plus, Edit, Trash2, Key } from 'lucide-react';
+import { Users, Plus, Edit, Trash2 } from 'lucide-react';
 import Modal from '@/components/Modal';
 import { useSession } from 'next-auth/react';
 import RoleGuard from '@/components/RoleGuard';
+import { useToast } from '@/components/Toast';
 
 interface ShopUser {
     _id: string;
@@ -23,6 +24,7 @@ export default function ShopUsersPage() {
     const [showModal, setShowModal] = useState(false);
     const [editingUser, setEditingUser] = useState<ShopUser | null>(null);
     const [formData, setFormData] = useState({ fullName: '', username: '', email: '', phone: '', password: '' });
+    const toast = useToast();
 
     useEffect(() => { fetchUsers(); }, []);
 
@@ -59,15 +61,19 @@ export default function ShopUsersPage() {
             const data = await res.json();
 
             if (!res.ok) {
-                alert(data.error || 'Failed to save user');
+                toast.error('Failed!', data.error || 'Could not save user');
                 return;
             }
 
             closeModal();
             fetchUsers();
+            toast.success(
+                editingUser ? 'User Updated!' : 'User Created!',
+                `${formData.fullName} has been ${editingUser ? 'updated' : 'created'} successfully`
+            );
         } catch (error) {
             console.error('Error saving user:', error);
-            alert('Failed to save user. Please try again.');
+            toast.error('Error!', 'Something went wrong. Please try again.');
         }
     };
 
@@ -77,10 +83,19 @@ export default function ShopUsersPage() {
         setShowModal(true);
     };
 
-    const handleDelete = async (id: string) => {
+    const handleDelete = async (id: string, userName: string) => {
         if (!confirm('Delete this user?')) return;
-        await fetch(`/api/shopusers?id=${id}`, { method: 'DELETE' });
-        fetchUsers();
+        try {
+            const res = await fetch(`/api/shopusers?id=${id}`, { method: 'DELETE' });
+            if (res.ok) {
+                fetchUsers();
+                toast.success('User Deleted!', `${userName} has been removed`);
+            } else {
+                toast.error('Failed!', 'Could not delete user');
+            }
+        } catch (error) {
+            toast.error('Error!', 'Something went wrong');
+        }
     };
 
     const closeModal = () => {
@@ -140,7 +155,7 @@ export default function ShopUsersPage() {
                                     <button onClick={() => handleEdit(user)} className="flex-1 py-2 text-sm text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] rounded-lg flex items-center justify-center gap-2">
                                         <Edit className="w-4 h-4" /> Edit
                                     </button>
-                                    <button onClick={() => handleDelete(user._id)} className="flex-1 py-2 text-sm text-red-500 hover:bg-red-500/10 rounded-lg flex items-center justify-center gap-2">
+                                    <button onClick={() => handleDelete(user._id, user.fullName)} className="flex-1 py-2 text-sm text-red-500 hover:bg-red-500/10 rounded-lg flex items-center justify-center gap-2">
                                         <Trash2 className="w-4 h-4" /> Delete
                                     </button>
                                 </div>

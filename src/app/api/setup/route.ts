@@ -15,8 +15,8 @@ export async function GET() {
         const hashedPassword = await bcrypt.hash('admin123', 12);
 
         const owner = await Owner.create({
-            username: 'admin',
-            email: 'admin@example.com',
+            username: 'owner',
+            email: 'owner@example.com',
             password: hashedPassword,
             fullName: 'Owner',
             isActive: true

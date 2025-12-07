@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Activity, Trash2, Edit, Plus, LogIn, LogOut, RefreshCw } from 'lucide-react';
+import { Activity, Plus, Edit, Trash2, LogIn, LogOut, RefreshCw, Filter, Clock, User, Target, ChevronDown } from 'lucide-react';
 import RoleGuard from '@/components/RoleGuard';
 
-interface ActivityLog {
+interface ActivityLogItem {
     _id: string;
     action: string;
     actionType: 'create' | 'update' | 'delete' | 'login' | 'logout' | 'other';
@@ -12,57 +12,69 @@ interface ActivityLog {
     userRole: string;
     targetType?: string;
     targetName?: string;
+    details?: string;
     createdAt: string;
 }
 
+const actionIcons = {
+    create: { icon: Plus, color: 'text-green-500', bg: 'bg-green-500/10' },
+    update: { icon: Edit, color: 'text-blue-500', bg: 'bg-blue-500/10' },
+    delete: { icon: Trash2, color: 'text-red-500', bg: 'bg-red-500/10' },
+    login: { icon: LogIn, color: 'text-indigo-500', bg: 'bg-indigo-500/10' },
+    logout: { icon: LogOut, color: 'text-orange-500', bg: 'bg-orange-500/10' },
+    other: { icon: Activity, color: 'text-slate-500', bg: 'bg-slate-500/10' },
+};
+
+const actionLabels = {
+    create: 'Added',
+    update: 'Updated',
+    delete: 'Deleted',
+    login: 'Logged In',
+    logout: 'Logged Out',
+    other: 'Action',
+};
+
 export default function ActivityPage() {
-    const [logs, setLogs] = useState<ActivityLog[]>([]);
+    const [logs, setLogs] = useState<ActivityLogItem[]>([]);
     const [loading, setLoading] = useState(true);
-    const [filter, setFilter] = useState<string>('all');
+    const [filter, setFilter] = useState<string>('');
+    const [limit, setLimit] = useState(50);
 
     useEffect(() => {
         fetchLogs();
-    }, [filter]);
+    }, [filter, limit]);
 
     const fetchLogs = async () => {
         try {
-            setLoading(true);
-            const url = filter === 'all' ? '/api/activity' : `/api/activity?actionType=${filter}`;
+            let url = `/api/activity?limit=${limit}`;
+            if (filter) url += `&actionType=${filter}`;
+
             const res = await fetch(url);
-            const data = await res.json();
-            setLogs(Array.isArray(data) ? data : []);
+            if (res.ok) {
+                const data = await res.json();
+                setLogs(data);
+            }
         } catch (error) {
-            console.error('Failed to fetch logs:', error);
-            setLogs([]);
+            console.error('Failed to fetch activity logs:', error);
         } finally {
             setLoading(false);
         }
     };
 
-    const getActionIcon = (type: string) => {
-        switch (type) {
-            case 'create': return <Plus className="w-4 h-4 text-green-500" />;
-            case 'update': return <Edit className="w-4 h-4 text-blue-500" />;
-            case 'delete': return <Trash2 className="w-4 h-4 text-red-500" />;
-            case 'login': return <LogIn className="w-4 h-4 text-indigo-500" />;
-            case 'logout': return <LogOut className="w-4 h-4 text-orange-500" />;
-            default: return <Activity className="w-4 h-4 text-gray-500" />;
-        }
-    };
-
-    const getActionColor = (type: string) => {
-        switch (type) {
-            case 'create': return 'bg-green-500/10 text-green-500';
-            case 'update': return 'bg-blue-500/10 text-blue-500';
-            case 'delete': return 'bg-red-500/10 text-red-500';
-            case 'login': return 'bg-indigo-500/10 text-indigo-500';
-            case 'logout': return 'bg-orange-500/10 text-orange-500';
-            default: return 'bg-gray-500/10 text-gray-500';
-        }
-    };
-
     const formatDate = (dateString: string) => {
         const date = new Date(dateString);
+        const now = new Date();
+        const diff = now.getTime() - date.getTime();
+
+        // Less than 1 minute
+        if (diff < 60000) return 'Just now';
+        // Less than 1 hour
+        if (diff < 3600000) return `${Math.floor(diff / 60000)} min ago`;
+        // Less than 24 hours
+        if (diff < 86400000) return `${Math.floor(diff / 3600000)} hours ago`;
+        // Less than 7 days
+        if (diff < 604800000) return `${Math.floor(diff / 86400000)} days ago`;
+
         return date.toLocaleDateString('en-IN', {
             day: '2-digit',
             month: 'short',
@@ -70,6 +82,15 @@ export default function ActivityPage() {
             hour: '2-digit',
             minute: '2-digit'
         });
+    };
+
+    const getRoleBadge = (role: string) => {
+        const badges: Record<string, string> = {
+            owner: 'bg-purple-500/10 text-purple-500 border-purple-500/20',
+            admin: 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20',
+            user: 'bg-green-500/10 text-green-500 border-green-500/20',
+        };
+        return badges[role] || 'bg-slate-500/10 text-slate-500 border-slate-500/20';
     };
 
     if (loading) {
@@ -83,75 +104,136 @@ export default function ActivityPage() {
     return (
         <RoleGuard allowedRoles={['owner']}>
             <div className="space-y-6 animate-fadeIn">
-                <div className="flex items-center justify-between">
+                {/* Header */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div>
                         <h1 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)]">Activity Log</h1>
-                        <p className="text-[var(--text-tertiary)] mt-1">Track all admin activities and changes</p>
+                        <p className="text-[var(--text-tertiary)] mt-1">Track all system activities and changes</p>
                     </div>
                     <button
-                        onClick={fetchLogs}
-                        className="p-2 hover:bg-[var(--bg-hover)] rounded-lg transition-colors"
+                        onClick={() => { setLoading(true); fetchLogs(); }}
+                        className="flex items-center gap-2 px-4 py-2 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] rounded-xl hover:bg-[var(--bg-hover)] transition-colors"
                     >
-                        <RefreshCw className="w-5 h-5 text-[var(--text-tertiary)]" />
+                        <RefreshCw className="w-4 h-4" />
+                        Refresh
                     </button>
                 </div>
 
-                {/* Filters */}
-                <div className="flex gap-2 overflow-x-auto pb-2">
-                    {['all', 'create', 'update', 'delete', 'login', 'logout'].map((type) => (
-                        <button
-                            key={type}
-                            onClick={() => setFilter(type)}
-                            className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${filter === type
-                                ? 'bg-indigo-500 text-white'
-                                : 'bg-[var(--bg-card)] text-[var(--text-tertiary)] hover:bg-[var(--bg-hover)]'
-                                }`}
-                        >
-                            {type.charAt(0).toUpperCase() + type.slice(1)}
-                        </button>
-                    ))}
+                {/* Stats Cards */}
+                <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+                    {['all', 'create', 'update', 'delete', 'login', 'logout'].map((type) => {
+                        const count = type === 'all'
+                            ? logs.length
+                            : logs.filter(l => l.actionType === type).length;
+                        const config = type === 'all'
+                            ? { icon: Activity, color: 'text-slate-500', bg: 'bg-slate-500/10' }
+                            : actionIcons[type as keyof typeof actionIcons];
+                        const Icon = config.icon;
+
+                        return (
+                            <button
+                                key={type}
+                                onClick={() => setFilter(type === 'all' ? '' : type)}
+                                className={`p-4 rounded-2xl border transition-all ${(filter === type || (type === 'all' && !filter))
+                                        ? 'bg-indigo-500/10 border-indigo-500/30'
+                                        : 'bg-[var(--bg-card)] border-[var(--border-primary)] hover:border-[var(--border-secondary)]'
+                                    }`}
+                            >
+                                <div className={`w-8 h-8 ${config.bg} rounded-lg flex items-center justify-center mb-2`}>
+                                    <Icon className={`w-4 h-4 ${config.color}`} />
+                                </div>
+                                <p className="text-2xl font-bold text-[var(--text-primary)]">{count}</p>
+                                <p className="text-xs text-[var(--text-muted)] capitalize">{type === 'all' ? 'Total' : type}</p>
+                            </button>
+                        );
+                    })}
                 </div>
 
-                {/* Activity List */}
+                {/* Activity Timeline */}
                 <div className="bg-[var(--bg-card)] border border-[var(--border-primary)] rounded-2xl overflow-hidden">
+                    <div className="p-4 border-b border-[var(--border-primary)] flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <Activity className="w-5 h-5 text-indigo-500" />
+                            <h2 className="font-semibold text-[var(--text-primary)]">Recent Activity</h2>
+                        </div>
+                        <div className="relative">
+                            <select
+                                value={limit}
+                                onChange={(e) => setLimit(parseInt(e.target.value))}
+                                className="px-3 py-1.5 pr-8 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] rounded-lg text-sm text-[var(--text-primary)] appearance-none"
+                            >
+                                <option value={25}>Last 25</option>
+                                <option value={50}>Last 50</option>
+                                <option value={100}>Last 100</option>
+                                <option value={200}>Last 200</option>
+                            </select>
+                            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
+                        </div>
+                    </div>
+
                     {logs.length === 0 ? (
-                        <div className="text-center py-12 text-[var(--text-muted)]">
-                            <Activity className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                            <p>No activity logs found</p>
+                        <div className="p-12 text-center">
+                            <Activity className="w-16 h-16 mx-auto mb-4 text-[var(--text-muted)] opacity-50" />
+                            <p className="text-[var(--text-muted)]">No activity logs found</p>
                         </div>
                     ) : (
                         <div className="divide-y divide-[var(--border-primary)]">
-                            {logs.map((log) => (
-                                <div key={log._id} className="p-4 hover:bg-[var(--bg-hover)] transition-colors">
-                                    <div className="flex items-start gap-4">
-                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${getActionColor(log.actionType)}`}>
-                                            {getActionIcon(log.actionType)}
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-[var(--text-primary)] font-medium">{log.action}</p>
-                                            <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                                <span className="text-sm text-[var(--text-tertiary)]">
-                                                    by <span className="font-medium">{log.userName}</span>
-                                                </span>
-                                                <span className={`px-2 py-0.5 rounded-full text-xs ${log.userRole === 'owner'
-                                                    ? 'bg-amber-500/20 text-amber-500'
-                                                    : 'bg-indigo-500/20 text-indigo-500'
-                                                    }`}>
-                                                    {log.userRole.replace('_', ' ')}
-                                                </span>
-                                                {log.targetType && (
-                                                    <span className="text-xs text-[var(--text-muted)]">
-                                                        → {log.targetType}: {log.targetName}
+                            {logs.map((log, index) => {
+                                const config = actionIcons[log.actionType] || actionIcons.other;
+                                const Icon = config.icon;
+
+                                return (
+                                    <div
+                                        key={log._id}
+                                        className="p-4 hover:bg-[var(--bg-hover)] transition-colors"
+                                        style={{ animationDelay: `${index * 50}ms` }}
+                                    >
+                                        <div className="flex items-start gap-4">
+                                            {/* Icon */}
+                                            <div className={`w-10 h-10 ${config.bg} rounded-xl flex items-center justify-center flex-shrink-0`}>
+                                                <Icon className={`w-5 h-5 ${config.color}`} />
+                                            </div>
+
+                                            {/* Content */}
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-start justify-between gap-4">
+                                                    <div>
+                                                        <p className="font-medium text-[var(--text-primary)]">
+                                                            {log.action}
+                                                        </p>
+                                                        {log.details && (
+                                                            <p className="text-sm text-[var(--text-muted)] mt-0.5">
+                                                                {log.details}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                    <span className="text-xs text-[var(--text-muted)] whitespace-nowrap flex items-center gap-1">
+                                                        <Clock className="w-3 h-3" />
+                                                        {formatDate(log.createdAt)}
                                                     </span>
-                                                )}
+                                                </div>
+
+                                                {/* Meta info */}
+                                                <div className="flex items-center gap-3 mt-2">
+                                                    <span className="flex items-center gap-1 text-xs text-[var(--text-muted)]">
+                                                        <User className="w-3 h-3" />
+                                                        {log.userName}
+                                                    </span>
+                                                    <span className={`text-xs px-2 py-0.5 rounded-full border ${getRoleBadge(log.userRole)}`}>
+                                                        {log.userRole}
+                                                    </span>
+                                                    {log.targetName && (
+                                                        <span className="flex items-center gap-1 text-xs text-[var(--text-muted)]">
+                                                            <Target className="w-3 h-3" />
+                                                            {log.targetType}: {log.targetName}
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
-                                        <span className="text-sm text-[var(--text-muted)] whitespace-nowrap">
-                                            {formatDate(log.createdAt)}
-                                        </span>
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
                 </div>

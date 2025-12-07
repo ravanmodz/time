@@ -212,7 +212,7 @@ export default function LoginPage() {
                         </form>
 
                         <div className="mt-6 pt-6 border-t border-slate-700 text-center text-sm text-slate-500">
-                            Default: admin / admin123
+                            Default: owner / admin123
                         </div>
                     </div>
                 </div>

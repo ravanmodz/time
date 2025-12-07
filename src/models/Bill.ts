@@ -10,6 +10,7 @@ export interface IBill {
     billYear: number;
     billDate: Date;
     dueDate: Date;
+    category?: mongoose.Types.ObjectId;
     rentAmount: number;
     maintenanceCharge: number;
     electricityUnits: number;
@@ -38,6 +39,7 @@ const BillSchema = new Schema<IBill>({
     billYear: { type: Number, required: true },
     billDate: { type: Date, default: Date.now },
     dueDate: { type: Date, required: true },
+    category: { type: Schema.Types.ObjectId, ref: 'BillCategory' },
     rentAmount: { type: Number, default: 0 },
     maintenanceCharge: { type: Number, default: 0 },
     electricityUnits: { type: Number, default: 0 },

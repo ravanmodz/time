@@ -18,6 +18,8 @@ const settingsSchema = new mongoose.Schema({
     appName: { type: String, default: 'BillManager' },
     appLogo: { type: String, default: '🏢' },
     logoType: { type: String, default: 'emoji' },
+    // PDF Logo (separate from app branding)
+    pdfLogo: { type: String, default: '' },
     // Company Details for PDF
     companyName: { type: String, default: '' },
     companyAddress: { type: String, default: '' },
@@ -65,6 +67,8 @@ export async function GET() {
             appName: settings.appName || 'BillManager',
             appLogo: settings.appLogo || '🏢',
             logoType: settings.logoType || 'emoji',
+            // PDF Logo
+            pdfLogo: settings.pdfLogo || '',
             // Company Details
             companyName: settings.companyName || '',
             companyAddress: settings.companyAddress || '',
@@ -108,7 +112,7 @@ export async function POST(request: Request) {
 
         const body = await request.json();
         const {
-            appName, appLogo, logoType,
+            appName, appLogo, logoType, pdfLogo,
             companyName, companyAddress, companyCity, companyGst, companyPhone, companyEmail,
             bankName, bankAccount, bankIfsc, bankBranch,
             upiId, pdfTemplate,
@@ -123,6 +127,7 @@ export async function POST(request: Request) {
         if (appName !== undefined) updateData.appName = appName || 'BillManager';
         if (appLogo !== undefined) updateData.appLogo = appLogo || '🏢';
         if (logoType !== undefined) updateData.logoType = logoType || 'emoji';
+        if (pdfLogo !== undefined) updateData.pdfLogo = pdfLogo;
         if (companyName !== undefined) updateData.companyName = companyName;
         if (companyAddress !== undefined) updateData.companyAddress = companyAddress;
         if (companyCity !== undefined) updateData.companyCity = companyCity;

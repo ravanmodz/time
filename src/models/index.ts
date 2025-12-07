@@ -4,5 +4,7 @@ export { Building } from './Building';
 export { Floor } from './Floor';
 export { Shop } from './Shop';
 export { User } from './User';
+export { ShopUser } from './ShopUser';
 export { Bill } from './Bill';
 export { Payment } from './Payment';
+export { BillCategory } from './BillCategory';

@@ -48,5 +48,5 @@ A modern billing management system for commercial buildings built with Next.js 1
 
 ## Default Login
 
-- Username: `admin`
+- Username: `owner`
 - Password: `admin123`

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
-import { CheckCircle, XCircle, AlertCircle, Info, X } from 'lucide-react';
+import { CheckCircle, XCircle, AlertTriangle, Info, X, Sparkles } from 'lucide-react';
 
 type ToastType = 'success' | 'error' | 'warning' | 'info';
 
@@ -26,93 +26,140 @@ const ToastContext = createContext<ToastContextType | undefined>(undefined);
 export function useToast() {
     const context = useContext(ToastContext);
     if (!context) {
-        throw new Error('useToast must be used within ToastProvider');
+        // Return a dummy implementation for non-provider usage
+        return {
+            showToast: () => { },
+            success: () => { },
+            error: () => { },
+            warning: () => { },
+            info: () => { },
+        };
     }
     return context;
 }
 
-const icons = {
-    success: CheckCircle,
-    error: XCircle,
-    warning: AlertCircle,
-    info: Info,
-};
-
-const colors = {
+const iconConfig = {
     success: {
-        bg: 'bg-green-500',
-        border: 'border-green-400',
-        icon: 'text-green-500',
-        iconBg: 'bg-green-100',
+        Icon: CheckCircle,
+        bgGradient: 'from-emerald-500 to-green-600',
+        iconBg: 'bg-emerald-100',
+        iconColor: 'text-emerald-600',
+        borderColor: 'border-emerald-200',
+        glowColor: 'shadow-emerald-500/25',
     },
     error: {
-        bg: 'bg-red-500',
-        border: 'border-red-400',
-        icon: 'text-red-500',
+        Icon: XCircle,
+        bgGradient: 'from-red-500 to-rose-600',
         iconBg: 'bg-red-100',
+        iconColor: 'text-red-600',
+        borderColor: 'border-red-200',
+        glowColor: 'shadow-red-500/25',
     },
     warning: {
-        bg: 'bg-yellow-500',
-        border: 'border-yellow-400',
-        icon: 'text-yellow-500',
-        iconBg: 'bg-yellow-100',
+        Icon: AlertTriangle,
+        bgGradient: 'from-amber-500 to-orange-600',
+        iconBg: 'bg-amber-100',
+        iconColor: 'text-amber-600',
+        borderColor: 'border-amber-200',
+        glowColor: 'shadow-amber-500/25',
     },
     info: {
-        bg: 'bg-blue-500',
-        border: 'border-blue-400',
-        icon: 'text-blue-500',
+        Icon: Info,
+        bgGradient: 'from-blue-500 to-indigo-600',
         iconBg: 'bg-blue-100',
+        iconColor: 'text-blue-600',
+        borderColor: 'border-blue-200',
+        glowColor: 'shadow-blue-500/25',
     },
 };
 
 function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
-    const Icon = icons[toast.type];
-    const color = colors[toast.type];
+    const config = iconConfig[toast.type];
+    const { Icon } = config;
+    const [isVisible, setIsVisible] = useState(false);
+    const [isLeaving, setIsLeaving] = useState(false);
 
     useEffect(() => {
+        // Animate in
+        setTimeout(() => setIsVisible(true), 10);
+
+        // Auto close
         const timer = setTimeout(() => {
-            onClose();
+            handleClose();
         }, toast.duration || 3000);
+
         return () => clearTimeout(timer);
-    }, [toast.duration, onClose]);
+    }, [toast.duration]);
+
+    const handleClose = () => {
+        setIsLeaving(true);
+        setTimeout(() => onClose(), 300);
+    };
 
     return (
-        <div className="animate-slideIn transform transition-all duration-300 ease-out">
-            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 p-6 min-w-[320px] max-w-[400px]">
-                {/* Icon */}
-                <div className="flex flex-col items-center text-center">
-                    <div className={`w-16 h-16 rounded-full ${color.iconBg} flex items-center justify-center mb-4 animate-bounce-once`}>
-                        <Icon className={`w-8 h-8 ${color.icon}`} />
-                    </div>
+        <div
+            className={`fixed inset-0 z-[9999] flex items-center justify-center transition-all duration-300 ${isVisible && !isLeaving ? 'bg-black/40 backdrop-blur-sm' : 'bg-transparent'
+                }`}
+            onClick={handleClose}
+        >
+            <div
+                className={`relative transform transition-all duration-300 ${isVisible && !isLeaving
+                        ? 'scale-100 opacity-100 translate-y-0'
+                        : 'scale-75 opacity-0 translate-y-4'
+                    }`}
+                onClick={(e) => e.stopPropagation()}
+            >
+                {/* Main Card */}
+                <div className={`bg-white dark:bg-slate-800 rounded-3xl shadow-2xl ${config.glowColor} p-8 min-w-[360px] max-w-[420px] border ${config.borderColor} dark:border-slate-700`}>
 
-                    {/* Title */}
-                    <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-2">
-                        {toast.title}
-                    </h3>
+                    {/* Decorative gradient top bar */}
+                    <div className={`absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r ${config.bgGradient} rounded-t-3xl`} />
 
-                    {/* Message */}
-                    {toast.message && (
-                        <p className="text-slate-500 dark:text-slate-400 text-sm">
-                            {toast.message}
-                        </p>
-                    )}
-
-                    {/* OK Button */}
+                    {/* Close button */}
                     <button
-                        onClick={onClose}
-                        className={`mt-4 px-8 py-2.5 ${color.bg} text-white rounded-lg font-medium hover:opacity-90 transition-all transform hover:scale-105`}
+                        onClick={handleClose}
+                        className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 dark:bg-slate-700 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-all"
                     >
-                        OK
+                        <X className="w-4 h-4" />
                     </button>
-                </div>
 
-                {/* Close button */}
-                <button
-                    onClick={onClose}
-                    className="absolute top-3 right-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-                >
-                    <X className="w-5 h-5" />
-                </button>
+                    {/* Content */}
+                    <div className="flex flex-col items-center text-center pt-2">
+                        {/* Animated Icon */}
+                        <div className={`relative w-20 h-20 rounded-full ${config.iconBg} flex items-center justify-center mb-5`}>
+                            {/* Pulse ring animation */}
+                            <div className={`absolute inset-0 rounded-full ${config.iconBg} animate-ping opacity-75`} />
+
+                            {/* Icon */}
+                            <Icon className={`relative w-10 h-10 ${config.iconColor} animate-bounce-once`} strokeWidth={2.5} />
+
+                            {/* Success sparkle */}
+                            {toast.type === 'success' && (
+                                <Sparkles className="absolute -top-1 -right-1 w-5 h-5 text-yellow-500 animate-pulse" />
+                            )}
+                        </div>
+
+                        {/* Title */}
+                        <h3 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">
+                            {toast.title}
+                        </h3>
+
+                        {/* Message */}
+                        {toast.message && (
+                            <p className="text-slate-500 dark:text-slate-400 text-base leading-relaxed max-w-[280px]">
+                                {toast.message}
+                            </p>
+                        )}
+
+                        {/* Action Button */}
+                        <button
+                            onClick={handleClose}
+                            className={`mt-6 px-10 py-3 bg-gradient-to-r ${config.bgGradient} text-white rounded-xl font-semibold text-base hover:shadow-lg hover:scale-105 transition-all duration-200`}
+                        >
+                            {toast.type === 'success' ? 'Great!' : toast.type === 'error' ? 'Try Again' : 'OK'}
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     );
@@ -142,53 +189,17 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         <ToastContext.Provider value={value}>
             {children}
 
-            {/* Toast Container - Sweet Alert Style (Center) */}
-            {toasts.length > 0 && (
-                <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm">
-                    {toasts.map((toast) => (
-                        <ToastItem
-                            key={toast.id}
-                            toast={toast}
-                            onClose={() => removeToast(toast.id)}
-                        />
-                    ))}
-                </div>
-            )}
+            {/* Render toasts */}
+            {toasts.length > 0 && toasts.map((toast) => (
+                <ToastItem
+                    key={toast.id}
+                    toast={toast}
+                    onClose={() => removeToast(toast.id)}
+                />
+            ))}
         </ToastContext.Provider>
     );
 }
 
-// Simple inline toast for non-provider usage
-export function showAlert(type: ToastType, title: string, message?: string) {
-    // Create a temporary container
-    const container = document.createElement('div');
-    container.id = 'temp-toast';
-    document.body.appendChild(container);
-
-    // Render toast
-    const Icon = icons[type];
-    const color = colors[type];
-
-    container.innerHTML = `
-        <div class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm" onclick="this.remove()">
-            <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-6 min-w-[320px] max-w-[400px] animate-pulse">
-                <div class="flex flex-col items-center text-center">
-                    <div class="w-16 h-16 rounded-full ${color.iconBg} flex items-center justify-center mb-4">
-                        <svg class="w-8 h-8 ${color.icon}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            ${type === 'success' ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>' : ''}
-                            ${type === 'error' ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/>' : ''}
-                        </svg>
-                    </div>
-                    <h3 class="text-xl font-bold text-slate-800 dark:text-white mb-2">${title}</h3>
-                    ${message ? `<p class="text-slate-500 text-sm">${message}</p>` : ''}
-                    <button onclick="document.getElementById('temp-toast').remove()" class="mt-4 px-8 py-2.5 ${color.bg} text-white rounded-lg font-medium">OK</button>
-                </div>
-            </div>
-        </div>
-    `;
-
-    // Auto-remove after 3 seconds
-    setTimeout(() => {
-        container.remove();
-    }, 3000);
-}
+// Export for use in pages
+export default ToastProvider;
